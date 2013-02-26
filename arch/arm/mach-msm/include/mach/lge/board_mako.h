@@ -25,7 +25,7 @@
 
 /* Ref resistance value = 665K */
 #define ADC_NO_INIT_CABLE   0
-#define ADC_CABLE_MHL_1K    30000
+#define ADC_CABLE_MHL_1K    5000
 #define ADC_CABLE_U_28P7K   60000
 #define ADC_CABLE_28P7K     110000
 #define ADC_CABLE_56K       185000

@@ -32,6 +32,12 @@
 #include <mach/msm_xo.h>
 
 #include "devices.h"
+
+#ifdef CONFIG_SII8334_MHL_TX
+#include <linux/platform_data/mhl_device.h>
+#endif
+
+
 #include "board-mako.h"
 
 /* gpio and clock control for vibrator */
@@ -415,7 +421,177 @@ static void __init lge_add_i2c_anx7808_device(void)
 		i2c_anx7808_devices.info,
 		i2c_anx7808_devices.len);
 }
-#endif
+
+#elif CONFIG_SII8334_MHL_TX
+
+#define GPIO_MHL_RESET_N 	31
+#define GPIO_MHL_INT_N		43
+
+static int sii8334_mhl_gpio_init(void)
+{
+	int rc;
+
+	pr_info("sii8334_mhl_gpio_init: enter\n");
+
+	rc = gpio_request(GPIO_MHL_INT_N, "sii8334_mhl_int_n");
+	if (rc < 0) {
+		pr_err("failed to request sii8334_mhl_int_n gpio\n");
+		goto error1;
+	}
+	gpio_export(GPIO_MHL_INT_N, 1);
+
+	rc = gpio_request(GPIO_MHL_RESET_N, "sii8334_mhl_reset_n");
+	if (rc < 0) {
+		pr_err("failed to request sii8334_mhl_reset_n gpio\n");
+		goto error2;
+	}
+
+	rc = gpio_direction_output(GPIO_MHL_RESET_N, 0);
+	if (rc < 0) {
+		pr_err("failed to set direction for sii8334_mhl_reset_n gpio\n");
+		goto error3;
+	}
+
+error3:
+	gpio_free(GPIO_MHL_RESET_N);
+error2:
+	gpio_free(GPIO_MHL_INT_N);
+error1:
+
+	pr_info("sii8334_mhl_gpio_init: exit status=%d\n", rc);
+
+	return rc;
+}
+
+static struct regulator *vreg_l18_mhl;
+
+static int sii8334_mhl_power_onoff(bool on, bool pm_ctrl)
+{
+	static bool power_state=0;
+	int rc = 0;
+
+	pr_info("sii8334_power_state: %s \n", power_state ? "on" : "off");
+
+	if (power_state == on) {
+		pr_info("sii8334_power_state is already %s \n",
+				power_state ? "on" : "off");
+		return rc;
+	}
+	power_state = on;
+
+	if (!vreg_l18_mhl)
+		vreg_l18_mhl = regulator_get(NULL, "8921_l18");
+
+	if (IS_ERR(vreg_l18_mhl)) {
+		rc = PTR_ERR(vreg_l18_mhl);
+		pr_err("sii8334_mhl_power_onoff: %s: vreg_l18_mhl get failed (%d)\n", __func__, rc);
+		return rc;
+	}
+
+	if (on) {
+		gpio_set_value(GPIO_MHL_RESET_N, 0);
+	
+		rc = regulator_set_optimum_mode(vreg_l18_mhl, 100000);    
+		if (rc < 0) {
+			pr_err("sii8334_mhl_power_onoff: %s : set optimum mode 100000,\
+				vreg_l18_mhl failed (%d)\n",
+				__func__, rc);
+			return -EINVAL;
+		}
+	 
+		rc = regulator_set_voltage(vreg_l18_mhl, 1200000, 1200000);
+		if (rc < 0) {
+			pr_err("sii8334_mhl_power_onoff: %s : set voltage 1200000,\
+				vreg_l18_mhl failed (%d)\n",
+				__func__, rc);
+			return -EINVAL;
+		}
+
+		rc = regulator_enable(vreg_l18_mhl);
+		if (rc) {
+			pr_err("sii8334_mhl_power_onoff: %s : vreg_l18_mhl enable failed (%d)\n",
+							__func__, rc);
+			return rc;
+		}
+
+		msleep(100);
+		gpio_set_value(GPIO_MHL_RESET_N, 1);
+
+	}
+	else {
+		rc = regulator_set_optimum_mode(vreg_l18_mhl, 100);
+		if (rc < 0) {
+			pr_err("sii8334_mhl_power_onoff: %s : set optimum mode 100,\
+				vreg_l18_mhl failed (%d)\n",
+				__func__, rc);
+			return -EINVAL;
+		}
+		
+		rc = regulator_disable(vreg_l18_mhl);
+		if (rc) {
+			pr_err("sii8334_mhl_power_onoff: %s : vreg_l18_mhl disable failed (%d)\n",
+							__func__, rc);
+			return rc;
+		}
+
+		gpio_set_value(GPIO_MHL_RESET_N, 0);
+	}
+
+	return rc;
+}
+
+static struct mhl_platform_data sii8334_mhl_pdata = {
+	.power = sii8334_mhl_power_onoff,
+};
+
+
+#define I2C_SURF 1
+#define I2C_FFA  (1 << 1)
+#define I2C_RUMI (1 << 2)
+#define I2C_SIM  (1 << 3)
+#define I2C_LIQUID (1 << 4)
+/* LGE_UPDATE_S. 02242012. jihyun.lee@lge.com
+   Add mach_mask for I2C */
+#define I2C_J1V (1 << 5)
+/* LGE_UPDATE_E */
+
+#define MHL_I2C_DEVICE_TYPE "SiI-833x"
+
+struct i2c_board_info i2c_mhl_info[] = {
+	{
+		I2C_BOARD_INFO(MHL_I2C_DEVICE_TYPE, 0x72 >> 1),  /* 0x39 */
+		.irq = MSM_GPIO_TO_INT(GPIO_MHL_INT_N),
+		.platform_data = &sii8334_mhl_pdata,
+	},
+	{
+		I2C_BOARD_INFO(MHL_I2C_DEVICE_TYPE, 0x7A >> 1),  /* 0x3D */
+	},
+	{
+		I2C_BOARD_INFO(MHL_I2C_DEVICE_TYPE, 0x92 >> 1), /* 0x49 */
+	},
+	{
+		I2C_BOARD_INFO(MHL_I2C_DEVICE_TYPE, 0x9A >> 1), /* 0x4D */
+	},
+	{
+		I2C_BOARD_INFO(MHL_I2C_DEVICE_TYPE, 0xC8 >> 1), /*  0x64 */
+	},
+};
+
+static struct i2c_registry i2c_mhl_devices __initdata = {
+	I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID | I2C_J1V,
+	APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+	i2c_mhl_info,
+	ARRAY_SIZE(i2c_mhl_info),
+};
+
+static void __init lge_add_i2c_mhl_device(void)
+{
+	i2c_register_board_info(i2c_mhl_devices.bus,
+							i2c_mhl_devices.info,
+							i2c_mhl_devices.len);
+}
+
+#endif  /* CONFIG_SLIMPORT_ANX7808 elif CONFIG_SII8334_MHL_TX */
 
 void __init apq8064_init_misc(void)
 {
@@ -423,5 +599,9 @@ void __init apq8064_init_misc(void)
 
 #ifdef CONFIG_SLIMPORT_ANX7808
 	lge_add_i2c_anx7808_device();
+#elif CONFIG_SII8334_MHL_TX
+	sii8334_mhl_gpio_init();
+	lge_add_i2c_mhl_device();
 #endif
+
 }

@@ -18,7 +18,7 @@
 #ifndef DEV_DBG_PREFIX
 #define DEV_DBG_PREFIX "EXT_INTERFACE: "
 #endif
-#define DEV_DBG(args...)	pr_debug(DEV_DBG_PREFIX args)
+#define DEV_DBG(args...)	pr_info(DEV_DBG_PREFIX args)
 #else
 #define DEV_DBG(args...)	(void)0
 #endif /* DEBUG */
@@ -261,6 +261,10 @@ struct external_common_state_type {
 	int sadb_size;
 	int (*read_edid_block)(int block, uint8 *edid_buf);
 	int (*hpd_feature)(int on);
+#endif
+#ifdef CONFIG_MACH_LGE
+	boolean boot_completed;
+	boolean external_block;
 #endif
 };
 
