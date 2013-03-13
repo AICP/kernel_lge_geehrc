@@ -221,10 +221,12 @@ static __init void mako_fixed_audio(void)
 {
 	if (lge_get_board_revno() >= HW_REV_1_0)
 		lge_hs_pdata.gpio_mic_bias_en = -1;
+#ifndef CONFIG_MACH_APQ8064_J1A
 	if (lge_get_board_revno() > HW_REV_1_0) {
 		lge_hs_pdata.gpio_detect = GPIO_EAR_SENSE_N_REV11;
 		lge_hs_pdata.gpio_detect_can_wakeup = 1;
 	}
+#endif
 }
 
 static struct platform_device lge_hsd_device = {

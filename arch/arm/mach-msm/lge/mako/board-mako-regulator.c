@@ -49,7 +49,11 @@ VREG_CONSUMERS(L5) = {
 };
 VREG_CONSUMERS(L6) = {
 	REGULATOR_SUPPLY("8921_l6",		NULL),
+#if defined(CONFIG_MMC_MSM_SDC3_SUPPORT)
+	REGULATOR_SUPPLY("sdc_vdd",		"msm_sdcc.3"),
+#else
 	REGULATOR_SUPPLY("earjack_debug",		NULL),
+#endif
 };
 VREG_CONSUMERS(L7) = {
 	REGULATOR_SUPPLY("8921_l7",		NULL),
@@ -108,7 +112,9 @@ VREG_CONSUMERS(L17) = {
 };
 VREG_CONSUMERS(L18) = {
 	REGULATOR_SUPPLY("8921_l18",		NULL),
+#ifdef CONFIG_SLIMPORT_ANX7808
 	REGULATOR_SUPPLY("slimport_dvdd",		NULL),
+#endif
 };
 
 /* Power setting for 13M AF */
@@ -534,7 +540,11 @@ apq8064_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L3,  0, 1, 0, 3075000, 3500000, NULL,          0,     0),
 	RPM_LDO(L4,  1, 1, 0, 1800000, 1800000, NULL,          0, 10000),
 	RPM_LDO(L5,  0, 1, 0, 2950000, 2950000, NULL,          0,     0),
-	RPM_LDO(L6,  0, 1, 0, 3000000, 3000000, NULL,          0,     0),
+#if defined(CONFIG_MMC_MSM_SDC3_SUPPORT)
+	RPM_LDO(L6,  0, 1, 0, 2950000, 2950000, NULL,          0,     0),
+#else
+	RPM_LDO(L6,  0, 1, 0, 2950000, 2950000, NULL,          0,     0),
+#endif
 	RPM_LDO(L7,  0, 1, 0, 1850000, 2950000, NULL,          0,     0),
 	RPM_LDO(L8,  0, 1, 0, 2800000, 3000000, NULL,          0,     0),
 	RPM_LDO(L9,  0, 1, 0, 3000000, 3000000, NULL,          0,     0),

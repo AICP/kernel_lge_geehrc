@@ -110,14 +110,35 @@ static struct touch_power_module touch_pwr = {
 	.power = synaptics_t1320_power_on,
 };
 
+#ifdef CONFIG_MACH_APQ8064_J1A
 static struct touch_device_caps touch_caps = {
-	.button_support = 0,
-	.is_width_major_supported = 1,
-	.is_width_minor_supported = 0,
+	.button_support = 1,
+	.y_button_boundary = 0,
+	.number_of_button = 3,
+	.button_name = {KEY_BACK,KEY_HOMEPAGE,KEY_MENU},
+	.button_margin = 0,
+//	.is_width_major_supported = 1,
+//	.is_width_minor_supported = 0,
+	.is_width_supported = 1,
 	.is_pressure_supported = 1,
 	.is_id_supported = 1,
-	.max_width_major = 15,
-	.max_width_minor = 15,
+//	.max_width_major = 15,
+//	.max_width_minor = 15,
+	.max_width = 15,
+	.max_pressure = 0xFF,
+	.max_id = 10,
+	.lcd_x = 768,
+	.lcd_y = 1280,
+	.x_max = 1536,
+	.y_max = 2560,
+};
+#else
+static struct touch_device_caps touch_caps = {
+	.button_support = 0,
+	.is_width_supported = 1,
+	.is_pressure_supported = 1,
+	.is_id_supported = 1,
+	.max_width = 15,
 	.max_pressure = 0xFF,
 	.max_id = 10,
 	.lcd_x = 768,
@@ -125,14 +146,22 @@ static struct touch_device_caps touch_caps = {
 	.x_max = 1536-1,
 	.y_max = 2560-1,
 };
+#endif
 
 static struct touch_operation_role touch_role = {
 	.operation_mode = INTERRUPT_MODE,
+#ifdef CONFIG_MACH_APQ8064_J1A
+	.key_type = TOUCH_HARD_KEY,
+#else
 	.key_type = KEY_NONE,
+#endif
 	.report_mode = REDUCED_REPORT_MODE,
 	.delta_pos_threshold = 1,
 	.orientation = 0,
-	.booting_delay = 200,
+#ifdef CONFIG_MACH_APQ8064_J1A
+	.report_period = 10000000,
+#endif
+	.booting_delay = 400,
 	.reset_delay = 20,
 	.suspend_pwr = POWER_OFF,
 	.resume_pwr = POWER_ON,
@@ -148,6 +177,7 @@ static struct touch_platform_data mako_ts_data = {
 	.int_pin = SYNAPTICS_TS_I2C_INT_GPIO,
 	.reset_pin = TOUCH_RESET,
 	.maker = "Synaptics",
+	.fw_version     = "E129",
 	.caps = &touch_caps,
 	.role = &touch_role,
 	.pwr = &touch_pwr,

@@ -959,6 +959,13 @@ config TOUCHSCREEN_LGE_SYNAPTICS
 	help
 	  Enables Synaptics RMI4 protocol I2C Touch Screens
 
+config TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+        bool "Synaptics RMI4 protocol based I2C interface Touchscreen Driver"
+        depends on I2C
+        select TOUCHSCREEN_LGE_SYNAPTICS
+        help
+          This enables support for Synaptics RMI4 protocol I2C interface Touchscreens.
+
 config TOUCH_REG_MAP_TM2000
 	tristate "synaptics TM2000 touchscreen"
 	depends on TOUCHSCREEN_LGE_SYNAPTICS
