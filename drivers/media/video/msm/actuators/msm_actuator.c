@@ -29,6 +29,9 @@ extern uint8_t imx111_afcalib_data[4];
 #define ACTUATOR_MIN_MOVE_RANGE              200 // TBD
 #endif
 
+struct region_params_t tmp_region_params[MAX_ACTUATOR_REGION];
+unsigned char frun = 0;
+
 static struct msm_actuator_ctrl_t msm_actuator_t;
 static struct msm_actuator msm_vcm_actuator_table;
 static struct msm_actuator msm_piezo_actuator_table;
@@ -388,6 +391,13 @@ static int32_t msm_actuator_init_default_step_table(struct msm_actuator_ctrl_t *
 	uint16_t data_size = set_info->actuator_params.data_size;
 
 	CDBG("%s called\n", __func__);
+
+	if(!frun){
+	    memcpy(&tmp_region_params,&a_ctrl->region_params,sizeof(tmp_region_params));
+	    frun++;
+	}else{
+	    memcpy(&a_ctrl->region_params,&tmp_region_params,sizeof(tmp_region_params));
+	}
 
 	for (; data_size > 0; data_size--)
 		max_code_size *= 2;
