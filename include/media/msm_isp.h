@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -68,6 +68,10 @@
 #define MSG_ID_RDI0_UPDATE_ACK          49
 #define MSG_ID_RDI1_UPDATE_ACK          50
 #define MSG_ID_RDI2_UPDATE_ACK          51
+#define MSG_ID_PIX0_UPDATE_ACK          52
+#define MSG_ID_PREV_STOP_ACK            53
+#define MSG_ID_OUTPUT_TERTIARY3         54
+
 
 /* ISP command IDs */
 #define VFE_CMD_DUMMY_0                                 0
@@ -131,7 +135,6 @@
 #define VFE_CMD_EPOCH2_ACK                              58
 #define VFE_CMD_START_RECORDING                         59
 #define VFE_CMD_STOP_RECORDING                          60
-#define VFE_CMD_DUMMY_5                                 61
 #define VFE_CMD_DUMMY_6                                 62
 #define VFE_CMD_CAPTURE                                 63
 #define VFE_CMD_DUMMY_7                                 64
@@ -233,12 +236,17 @@
 #define VFE_CMD_COLORXFORM_ENC_UPDATE                   160
 #define VFE_CMD_COLORXFORM_VIEW_UPDATE                  161
 #define VFE_CMD_TEST_GEN_CFG                            162
+#define VFE_CMD_SELECT_RDI                              163
+#define VFE_CMD_SET_STATS_VER                           164
+#define VFE_CMD_RGB_ALL_CFG                             165
+#define VFE_CMD_RGB_ALL_UPDATE                          166
+#define VFE_CMD_STOP_RECORDING_DONE                     167
+#define VFE_CMD_MAX                                     168
 
-struct msm_isp_cmd
-{
-  int32_t id;
-  uint16_t length;
-  void *value;
+struct msm_isp_cmd {
+	int32_t  id;
+	uint16_t length;
+	void     *value;
 };
 
 #define VPE_CMD_DUMMY_0                                 0
@@ -256,14 +264,14 @@ struct msm_isp_cmd
 #define VPE_CMD_ZOOM                                    13
 #define VPE_CMD_MAX                                     14
 
-#define MSM_PP_CMD_TYPE_NOT_USED        0	/* not used */
-#define MSM_PP_CMD_TYPE_VPE             1	/* VPE cmd */
-#define MSM_PP_CMD_TYPE_MCTL            2	/* MCTL cmd */
+#define MSM_PP_CMD_TYPE_NOT_USED        0  /* not used */
+#define MSM_PP_CMD_TYPE_VPE             1  /* VPE cmd */
+#define MSM_PP_CMD_TYPE_MCTL            2  /* MCTL cmd */
 
-#define MCTL_CMD_DUMMY_0                0	/* not used */
-#define MCTL_CMD_GET_FRAME_BUFFER       1	/* reserve a free frame buffer */
-#define MCTL_CMD_PUT_FRAME_BUFFER       2	/* return the free frame buffer */
-#define MCTL_CMD_DIVERT_FRAME_PP_PATH   3	/* divert frame for pp */
+#define MCTL_CMD_DUMMY_0                0  /* not used */
+#define MCTL_CMD_GET_FRAME_BUFFER       1  /* reserve a free frame buffer */
+#define MCTL_CMD_PUT_FRAME_BUFFER       2  /* return the free frame buffer */
+#define MCTL_CMD_DIVERT_FRAME_PP_PATH   3  /* divert frame for pp */
 
 /* event typese sending to MCTL PP module */
 #define MCTL_PP_EVENT_NOTUSED           0
@@ -276,6 +284,7 @@ struct msm_isp_cmd
 #define VPE_SCALER_CONFIG_LEN           260
 #define VPE_DIS_OFFSET_CFG_LEN          12
 
+
 #define CAPTURE_WIDTH          1280
 #define IMEM_Y_SIZE            (CAPTURE_WIDTH*16)
 #define IMEM_CBCR_SIZE         (CAPTURE_WIDTH*8)
@@ -286,51 +295,43 @@ struct msm_isp_cmd
 #define IMEM_Y_PONG_OFFSET     (IMEM_CBCR_PING_OFFSET + IMEM_CBCR_SIZE)
 #define IMEM_CBCR_PONG_OFFSET  (IMEM_Y_PONG_OFFSET + IMEM_Y_SIZE)
 
-struct msm_vpe_op_mode_cfg
-{
-  uint8_t op_mode_cfg[VPE_OPERATION_MODE_CFG_LEN];
+
+struct msm_vpe_op_mode_cfg {
+	uint8_t op_mode_cfg[VPE_OPERATION_MODE_CFG_LEN];
 };
 
-struct msm_vpe_input_plane_cfg
-{
-  uint8_t input_plane_cfg[VPE_INPUT_PLANE_CFG_LEN];
+struct msm_vpe_input_plane_cfg {
+	uint8_t input_plane_cfg[VPE_INPUT_PLANE_CFG_LEN];
 };
 
-struct msm_vpe_output_plane_cfg
-{
-  uint8_t output_plane_cfg[VPE_OUTPUT_PLANE_CFG_LEN];
+struct msm_vpe_output_plane_cfg {
+	uint8_t output_plane_cfg[VPE_OUTPUT_PLANE_CFG_LEN];
 };
 
-struct msm_vpe_input_plane_update_cfg
-{
-  uint8_t input_plane_update_cfg[VPE_INPUT_PLANE_UPDATE_LEN];
+struct msm_vpe_input_plane_update_cfg {
+	uint8_t input_plane_update_cfg[VPE_INPUT_PLANE_UPDATE_LEN];
 };
 
-struct msm_vpe_scaler_cfg
-{
-  uint8_t scaler_cfg[VPE_SCALER_CONFIG_LEN];
+struct msm_vpe_scaler_cfg {
+	uint8_t scaler_cfg[VPE_SCALER_CONFIG_LEN];
 };
 
-struct msm_vpe_flush_frame_buffer
-{
-  uint32_t src_buf_handle;
-  uint32_t dest_buf_handle;
-  int path;
+struct msm_vpe_flush_frame_buffer {
+	uint32_t src_buf_handle;
+	uint32_t dest_buf_handle;
+	int path;
 };
 
-struct msm_mctl_pp_frame_buffer
-{
-  uint32_t buf_handle;
-  int path;
+struct msm_mctl_pp_frame_buffer {
+	uint32_t buf_handle;
+	int path;
 };
-struct msm_mctl_pp_divert_pp
-{
-  int path;
-  int enable;
+struct msm_mctl_pp_divert_pp {
+	int path;
+	int enable;
 };
-struct msm_vpe_clock_rate
-{
-  uint32_t rate;
+struct msm_vpe_clock_rate {
+	uint32_t rate;
 };
 
 #define MSM_MCTL_PP_VPE_FRAME_ACK    (1<<0)
@@ -349,11 +350,18 @@ struct msm_vpe_clock_rate
 #define VFE_OUTPUTS_THUMB_AND_JPEG      BIT(10)
 #define VFE_OUTPUTS_RDI0                BIT(11)
 #define VFE_OUTPUTS_RDI1                BIT(12)
+#define VFE_OUTPUTS_RDI2                BIT(13)
 
-struct msm_frame_info
-{
-  uint32_t inst_handle;
-  uint32_t path;
+#define	VFE_RDI_COMPOSITE				(1 << 0)
+#define	VFE_RDI_NON_COMPOSITE			(1 << 1)
+
+#define VFE_STATS_TYPE_LEGACY		0
+#define VFE_STATS_TYPE_BAYER		(1 << 2)
+
+struct msm_frame_info {
+	uint32_t inst_handle;
+	uint32_t path;
 };
 
 #endif /*__MSM_ISP_H__*/
+

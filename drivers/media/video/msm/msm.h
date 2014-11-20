@@ -16,6 +16,12 @@
 
 #ifdef __KERNEL__
 
+/*                                                                  */
+#if defined(CONFIG_LGE_GK_CAMERA)
+#define LGE_GK_CAMERA_BSP
+#endif
+/*                                                                */
+
 /* Header files */
 #include <linux/i2c.h>
 #include <linux/videodev2.h>
@@ -58,6 +64,7 @@
 #define MSM_VPE_DRV_NAME "msm_vpe"
 #define MSM_GEMINI_DRV_NAME "msm_gemini"
 #define MSM_MERCURY_DRV_NAME "msm_mercury"
+#define MSM_JPEG_DRV_NAME "msm_jpeg"
 #define MSM_I2C_MUX_DRV_NAME "msm_cam_i2c_mux"
 #define MSM_IRQ_ROUTER_DRV_NAME "msm_cam_irq_router"
 #define MSM_CPP_DRV_NAME "msm_cpp"
@@ -74,6 +81,11 @@
 #define MAX_NUM_JPEG_DEV 3
 #define MAX_NUM_CPP_DEV 1
 #define MAX_NUM_CCI_DEV 1
+
+/*AVTimer*/
+#define AVTIMER_MSW_PHY_ADDR  0x2800900C
+#define AVTIMER_LSW_PHY_ADDR  0x28009008
+#define AVTIMER_ITERATION_CTR 16
 
 /* msm queue management APIs*/
 
@@ -141,22 +153,22 @@ struct isp_msg_output {
 	uint32_t  frameCounter;
 };
 
+struct rdi_count_msg {
+	uint32_t rdi_interface;
+	uint32_t count;
+};
+
 /* message id for v4l2_subdev_notify*/
 enum msm_camera_v4l2_subdev_notify {
-	NOTIFY_CID_CHANGE, /* arg = msm_camera_csid_params */
 	NOTIFY_ISP_MSG_EVT, /* arg = enum ISP_MESSAGE_ID */
 	NOTIFY_VFE_MSG_OUT, /* arg = struct isp_msg_output */
 	NOTIFY_VFE_MSG_STATS,  /* arg = struct isp_msg_stats */
 	NOTIFY_VFE_MSG_COMP_STATS, /* arg = struct msm_stats_buf */
 	NOTIFY_VFE_BUF_EVT, /* arg = struct msm_vfe_resp */
-	NOTIFY_ISPIF_STREAM, /* arg = enable parameter for s_stream */
-	NOTIFY_VPE_MSG_EVT,
 	NOTIFY_VFE_CAMIF_ERROR,
-	NOTIFY_VFE_SOF_COUNT, /*arg = int*/
+	NOTIFY_VFE_PIX_SOF_COUNT, /*arg = int*/
+	NOTIFY_AXI_RDI_SOF_COUNT, /*arg = struct rdi_count_msg*/
 	NOTIFY_PCLK_CHANGE, /* arg = pclk */
-	NOTIFY_CSIPHY_CFG, /* arg = msm_camera_csiphy_params */
-	NOTIFY_CSID_CFG, /* arg = msm_camera_csid_params */
-	NOTIFY_CSIC_CFG, /* arg = msm_camera_csic_params */
 	NOTIFY_VFE_IRQ,
 	NOTIFY_AXI_IRQ,
 	NOTIFY_GESTURE_EVT, /* arg = v4l2_event */
@@ -209,11 +221,13 @@ struct msm_cam_return_frame_info {
 	int dirty;
 	int node_type;
 	struct timeval timestamp;
+	uint32_t frame_id;
 };
 
 struct msm_cam_timestamp {
 	uint8_t present;
 	struct timeval timestamp;
+	uint32_t frame_id;
 };
 
 struct msm_cam_buf_map_info {
@@ -272,6 +286,10 @@ struct msm_cam_media_controller {
 	int (*mctl_vbqueue_init)(struct msm_cam_v4l2_dev_inst *pcam,
 				struct vb2_queue *q, enum v4l2_buf_type type);
 	int (*mctl_ufmt_init)(struct msm_cam_media_controller *p_mctl);
+	int (*isp_config)(struct msm_cam_media_controller *pmctl,
+		 unsigned int cmd, unsigned long arg);
+	int (*isp_notify)(struct msm_cam_media_controller *pmctl,
+		struct v4l2_subdev *sd, unsigned int notification, void *arg);
 
 	/* the following reflect the HW topology information*/
 	struct v4l2_subdev *sensor_sdev; /* sensor sub device */
@@ -283,10 +301,10 @@ struct msm_cam_media_controller {
 	struct v4l2_subdev *gemini_sdev; /* gemini sub device */
 	struct v4l2_subdev *vpe_sdev; /* vpe sub device */
 	struct v4l2_subdev *axi_sdev; /* axi sub device */
+	struct v4l2_subdev *vfe_sdev; /* vfe sub device */
 	struct v4l2_subdev *eeprom_sdev; /* eeprom sub device */
 	struct v4l2_subdev *cpp_sdev;/*cpp sub device*/
 
-	struct msm_isp_ops *isp_sdev;    /* isp sub device : camif/VFE */
 	struct msm_cam_config_dev *config_device;
 
 	/*mctl session control information*/
@@ -312,25 +330,11 @@ struct msm_cam_media_controller {
 	uint32_t ping_imem_cbcr;
 	uint32_t pong_imem_y;
 	uint32_t pong_imem_cbcr;
+	uint8_t hardware_running; /*                                                                            */
 
 	/*IOMMU domain for this session*/
 	int domain_num;
 	struct iommu_domain *domain;
-};
-
-/* abstract camera device represents a VFE and connected sensor */
-struct msm_isp_ops {
-	char *config_dev_name;
-
-	int (*isp_config)(struct msm_cam_media_controller *pmctl,
-		 unsigned int cmd, unsigned long arg);
-	int (*isp_notify)(struct v4l2_subdev *sd,
-		unsigned int notification, void *arg);
-	int (*isp_pp_cmd)(struct msm_cam_media_controller *pmctl,
-		 struct msm_mctl_pp_cmd, void *data);
-
-	/* vfe subdevice */
-	struct v4l2_subdev *sd;
 };
 
 struct msm_isp_buf_info {
@@ -343,7 +347,7 @@ struct msm_cam_buf_offset {
 	uint32_t data_offset;
 };
 
-#define MSM_DEV_INST_MAX                    16
+#define MSM_DEV_INST_MAX                    24
 struct msm_cam_v4l2_dev_inst {
 	struct v4l2_fh  eventHandle;
 	struct vb2_queue vid_bufq;
@@ -367,6 +371,13 @@ struct msm_cam_v4l2_dev_inst {
 	int vbqueue_initialized;
 	struct mutex inst_lock;
 	uint32_t inst_handle;
+	uint32_t sequence;
+	uint8_t avtimerOn;
+	void __iomem *p_avtimer_msw;
+	void __iomem *p_avtimer_lsw;
+#if defined(CONFIG_LGE_GK_CAMERA)
+	int is_closing;
+#endif
 };
 
 struct msm_cam_mctl_node {
@@ -407,6 +418,19 @@ struct msm_cam_v4l2_device {
 	struct v4l2_subdev *act_sdev; /* actuator sub device */
 	struct v4l2_subdev *eeprom_sdev; /* actuator sub device */
 	struct msm_camera_sensor_info *sdata;
+
+	struct msm_device_queue eventData_q; /*payload for events sent to app*/
+	struct mutex event_lock;
+
+/*                                                                  */
+#if defined(CONFIG_LGE_GK_CAMERA) || defined(CONFIG_MACH_APQ8064_AWIFI)
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	spinlock_t ion_lock;
+	struct ion_client *client;
+	struct kref refcount;
+#endif
+#endif
+/*                                                                */
 };
 
 static inline struct msm_cam_v4l2_device *to_pcam(
@@ -432,6 +456,11 @@ struct msm_cam_config_dev {
 	int dev_num;
 	int domain_num;
 	struct iommu_domain *domain;
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI)
+	struct msm_cam_v4l2_device *pcam;
+#endif
+#endif
 };
 
 struct msm_cam_subdev_info {
@@ -522,12 +551,14 @@ struct irqmgr_intr_lkup_table {
 };
 
 struct interface_map {
-	/* The interafce a particular stream belongs to.
+	/* The interface a particular stream belongs to.
 	 * PIX0, RDI0, RDI1, or RDI2
 	 */
 	int interface;
-	/* The handle of the mctl intstance interface runs on */
+	/* The handle of the mctl instance, interface runs on */
 	uint32_t mctl_handle;
+	int vnode_id;
+	int is_bayer_sensor;
 };
 
 /* abstract camera server device for all sensor successfully probed*/
@@ -546,6 +577,8 @@ struct msm_cam_server_dev {
 	struct msm_cam_config_dev_info config_info;
 	/* active working camera device - only one allowed at this time*/
 	struct msm_cam_v4l2_device *pcam_active[MAX_NUM_ACTIVE_CAMERA];
+	/* save the opened pcam for finding the mctl when doing buf lookup */
+	struct msm_cam_v4l2_device *opened_pcam[MAX_NUM_ACTIVE_CAMERA];
 	/* number of camera devices opened*/
 	atomic_t number_pcam_active;
 	struct v4l2_queue_util server_command_queue;
@@ -595,6 +628,16 @@ struct msm_cam_server_dev {
     /*IOMMU domain (Page table)*/
 	int domain_num;
 	struct iommu_domain *domain;
+
+/*                                                                   */
+#if defined(CONFIG_LGE_GK_CAMERA)
+	struct task_struct	*prev_task;
+	wait_queue_head_t ft_wq;
+	unsigned long	wait_ft_timeout;
+	spinlock_t	ft_spin;
+#endif
+/*                                                                 */
+
 };
 
 enum msm_cam_buf_lookup_type {
@@ -611,11 +654,13 @@ struct msm_cam_buf_handle {
 
 /* ISP related functions */
 void msm_isp_vfe_dev_init(struct v4l2_subdev *vd);
+int msm_isp_config(struct msm_cam_media_controller *pmctl,
+			 unsigned int cmd, unsigned long arg);
+int msm_isp_notify(struct msm_cam_media_controller *pmctl,
+	struct v4l2_subdev *sd, unsigned int notification, void *arg);
 /*
 int msm_isp_register(struct msm_cam_v4l2_device *pcam);
 */
-int msm_isp_register(struct msm_cam_server_dev *psvr);
-void msm_isp_unregister(struct msm_cam_server_dev *psvr);
 int msm_sensor_register(struct v4l2_subdev *);
 int msm_isp_init_module(int g_num_config_nodes);
 
@@ -672,6 +717,8 @@ int msm_mctl_do_pp(struct msm_cam_media_controller *p_mctl,
 	int msg_type, uint32_t y_phy, uint32_t frame_id);
 int msm_mctl_pp_ioctl(struct msm_cam_media_controller *p_mctl,
 	unsigned int cmd, unsigned long arg);
+int msm_mctl_pp_notify(struct msm_cam_media_controller *pmctl,
+	struct msm_mctl_pp_frame_info *pp_frame_info);
 int msm_mctl_img_mode_to_inst_index(struct msm_cam_media_controller *pmctl,
 	int out_type, int node_type);
 struct msm_frame_buffer *msm_mctl_buf_find(
@@ -679,6 +726,8 @@ struct msm_frame_buffer *msm_mctl_buf_find(
 	struct msm_cam_v4l2_dev_inst *pcam_inst, int del_buf,
 	struct msm_free_buf *fbuf);
 void msm_mctl_gettimeofday(struct timeval *tv);
+void msm_mctl_getAVTimer(struct msm_cam_v4l2_dev_inst *pcam_inst,
+        struct timeval *tv);
 int msm_mctl_check_pp(struct msm_cam_media_controller *p_mctl,
 	int msg_type, int *pp_divert_type, int *pp_type);
 int msm_mctl_do_pp_divert(
@@ -715,7 +764,11 @@ int msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
 	struct ion_client *client, int domain_num);
 int msm_mctl_pp_mctl_divert_done(struct msm_cam_media_controller *p_mctl,
 	void __user *arg);
+/*                                                                  */
+#if !defined(CONFIG_LGE_GK_CAMERA) && !defined(CONFIG_MACH_APQ8064_AWIFI)
 void msm_release_ion_client(struct kref *ref);
+#endif
+/*                                                                */
 int msm_cam_register_subdev_node(struct v4l2_subdev *sd,
 	struct msm_cam_subdev_info *sd_info);
 int msm_mctl_find_sensor_subdevs(struct msm_cam_media_controller *p_mctl,
@@ -732,6 +785,20 @@ int msm_mctl_pp_get_vpe_buf_info(struct msm_mctl_pp_frame_info *zoom);
 void msm_queue_init(struct msm_device_queue *queue, const char *name);
 void msm_enqueue(struct msm_device_queue *queue, struct list_head *entry);
 void msm_drain_eventq(struct msm_device_queue *queue);
+int get_server_use_count(void); /*                                                                            */
+//                                                                                          
+void msm_cam_stop_hardware(struct msm_cam_v4l2_device *pcam);
+//                                                                                        
+
+/*                                                                  */
+#if defined(CONFIG_LGE_GK_CAMERA) ||defined(CONFIG_MACH_APQ8064_AWIFI)
+#ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+void msm_camera_v4l2_release_ion_client(struct kref *ref);
+struct ion_client *msm_camera_v4l2_get_ion_client(struct msm_cam_v4l2_device *pcam);
+int msm_camera_v4l2_put_ion_client(struct msm_cam_v4l2_device *pcam);
+#endif
+#endif
+/*                                                                */
 #endif /* __KERNEL__ */
 
 #endif /* _MSM_H */
