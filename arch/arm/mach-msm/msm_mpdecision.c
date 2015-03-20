@@ -87,7 +87,7 @@ static struct msm_mpdec_tuners {
 	.max_cpus = CONFIG_NR_CPUS,
 	.min_cpus = 1,
 #ifdef CONFIG_MSM_MPDEC_INPUTBOOST_CPUMIN
-	.boost_enabled = true,
+	.boost_enabled = false,
 	.boost_time = MSM_MPDEC_BOOSTTIME,
 	.boost_freq = {
 		MSM_MPDEC_BOOSTFREQ_CPU0,
@@ -167,8 +167,10 @@ static void __ref mpdec_cpu_up(int cpu) {
 		per_cpu(msm_mpdec_cpudata, cpu).on_time = ktime_to_ms(ktime_get());
 		per_cpu(msm_mpdec_cpudata, cpu).online = true;
 		per_cpu(msm_mpdec_cpudata, cpu).times_cpu_hotplugged += 1;
+#if DEBUG
 		pr_info(MPDEC_TAG"CPU[%d] off->on | Mask=[%d%d%d%d]\n",
 			cpu, cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
+#endif
 		mutex_unlock(&per_cpu(msm_mpdec_cpudata, cpu).hotplug_mutex);
 	}
 }
@@ -183,8 +185,10 @@ static void mpdec_cpu_down(int cpu) {
 		per_cpu(msm_mpdec_cpudata, cpu).online = false;
 		per_cpu(msm_mpdec_cpudata, cpu).on_time_total += on_time;
 		per_cpu(msm_mpdec_cpudata, cpu).times_cpu_unplugged += 1;
+#if DEBUG
 		pr_info(MPDEC_TAG"CPU[%d] on->off | Mask=[%d%d%d%d] | time online: %llu\n",
 			cpu, cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3), on_time);
+#endif
 		mutex_unlock(&per_cpu(msm_mpdec_cpudata, cpu).hotplug_mutex);
 	}
 }
@@ -290,8 +294,10 @@ static void msm_mpdec_work_thread(struct work_struct *work) {
 #endif
 				mpdec_cpu_down(cpu);
 			} else if (per_cpu(msm_mpdec_cpudata, cpu).online != cpu_online(cpu)) {
+#if DEBUG
 				pr_info(MPDEC_TAG"CPU[%d] was controlled outside of mpdecision! | pausing [%d]ms\n",
 					cpu, msm_mpdec_tuners_ins.pause);
+#endif
 				mpdec_paused_until = ktime_to_ms(ktime_get()) + msm_mpdec_tuners_ins.pause;
 				was_paused = true;
 			}
@@ -306,8 +312,10 @@ static void msm_mpdec_work_thread(struct work_struct *work) {
 				unboost_cpu(cpu);
 #endif
 			} else if (per_cpu(msm_mpdec_cpudata, cpu).online != cpu_online(cpu)) {
+#if DEBUG
 				pr_info(MPDEC_TAG"CPU[%d] was controlled outside of mpdecision! | pausing [%d]ms\n",
 					cpu, msm_mpdec_tuners_ins.pause);
+#endif
 				mpdec_paused_until = ktime_to_ms(ktime_get()) + msm_mpdec_tuners_ins.pause;
 				was_paused = true;
 			}
@@ -363,8 +371,10 @@ static void unboost_cpu(int cpu) {
 				per_cpu(msm_mpdec_cpudata, cpu).revib_wq_running = false;
 				if ((cpu_policy->min != per_cpu(msm_mpdec_cpudata, cpu).boost_freq) &&
 					(cpu_policy->min != per_cpu(msm_mpdec_cpudata, cpu).norm_min_freq)) {
+#if DEBUG
 					pr_info(MPDEC_TAG"cpu%u min was changed while boosted (%lu->%u), using new min",
 						cpu, per_cpu(msm_mpdec_cpudata, cpu).norm_min_freq, cpu_policy->min);
+#endif
 					per_cpu(msm_mpdec_cpudata, cpu).norm_min_freq = cpu_policy->min;
 				}
 				update_cpu_min_freq(cpu_policy, cpu, per_cpu(msm_mpdec_cpudata, cpu).norm_min_freq);
@@ -538,7 +548,9 @@ static void msm_mpdec_suspend(struct work_struct * msm_mpdec_suspend_work) {
 #endif
 
 	if (!msm_mpdec_tuners_ins.scroff_single_core) {
+#if DEBUG
 		pr_info(MPDEC_TAG"Screen -> off\n");
+#endif
 		return;
 	}
 
@@ -554,8 +566,9 @@ static void msm_mpdec_suspend(struct work_struct * msm_mpdec_suspend_work) {
 		}
 	}
 	mpdec_suspended = true;
-
+#if DEBUG
 	pr_info(MPDEC_TAG"Screen -> off. Deactivated mpdecision.\n");
+#endif
 }
 static DECLARE_WORK(msm_mpdec_suspend_work, msm_mpdec_suspend);
 
@@ -584,10 +597,14 @@ static void msm_mpdec_resume(struct work_struct * msm_mpdec_suspend_work) {
 					mpdec_cpu_down(cpu);
 			}
 		}
+#if DEBUG
 		pr_info(MPDEC_TAG"Screen -> on. Activated mpdecision. | Mask=[%d%d%d%d]\n",
 				cpu_online(0), cpu_online(1), cpu_online(2), cpu_online(3));
+#endif
 	} else {
+#if DEBUG
 		pr_info(MPDEC_TAG"Screen -> on\n");
+#endif
 	}
 }
 static DECLARE_WORK(msm_mpdec_resume_work, msm_mpdec_resume);
@@ -851,7 +868,9 @@ static ssize_t store_max_cpus(struct kobject *a, struct attribute *b,
 				continue;
 			mpdec_cpu_down(cpu);
 		}
+#if DEBUG
 		pr_info(MPDEC_TAG"max_cpus set to %u. Affected CPUs were unplugged!\n", input);
+#endif
 	}
 
 	return count;
@@ -875,7 +894,9 @@ static ssize_t store_min_cpus(struct kobject *a, struct attribute *b,
 				continue;
 			mpdec_cpu_up(cpu);
 		}
+#if DEBUG
 		pr_info(MPDEC_TAG"min_cpus set to %u. Affected CPUs were hotplugged!\n", input);
+#endif
 	}
 
 	return count;
@@ -909,7 +930,9 @@ static ssize_t store_enabled(struct kobject *a, struct attribute *b,
 	switch (buf[0]) {
 	case '0':
 		state = MSM_MPDEC_DISABLED;
+#if DEBUG
 		pr_info(MPDEC_TAG"nap time... Hot plugging offline CPUs...\n");
+#endif
 		for (cpu = 1; cpu < CONFIG_NR_CPUS; cpu++)
 			if (!cpu_online(cpu))
 				mpdec_cpu_up(cpu);
@@ -919,7 +942,9 @@ static ssize_t store_enabled(struct kobject *a, struct attribute *b,
 		was_paused = true;
 		queue_delayed_work(msm_mpdec_workq, &msm_mpdec_work,
 					msecs_to_jiffies(msm_mpdec_tuners_ins.delay));
+#if DEBUG
 		pr_info(MPDEC_TAG"firing up mpdecision...\n");
+#endif
 		break;
 	default:
 		ret = -EINVAL;
@@ -1194,9 +1219,9 @@ static int __init msm_mpdec_init(void) {
 		}
 	} else
 		pr_warn(MPDEC_TAG"sysfs: ERROR, could not create sysfs kobj");
-
+#if DEBUG
 	pr_info(MPDEC_TAG"%s init complete.", __func__);
-
+#endif
 
 #ifndef CONFIG_HAS_EARLYSUSPEND
 	msm_mpdec_lcd_notif.notifier_call = msm_mpdec_lcd_notifier_callback;
