@@ -50,19 +50,64 @@ typedef enum {
 
 hw_rev_type lge_get_board_revno(void);
 
-#ifdef CONFIG_LCD_KCAL
-struct kcal_data {
-	int red;
-	int green;
-	int blue;
+#ifdef CONFIG_LGE_PM
+/*Classified the ADC value for cable detection */
+typedef enum {
+	NO_INIT_CABLE = 0,
+	CABLE_MHL_1K,
+	CABLE_U_28P7K,
+	CABLE_28P7K,
+	CABLE_56K,
+	CABLE_100K,
+	CABLE_130K,
+	CABLE_180K,
+	CABLE_200K,
+	CABLE_220K,
+	CABLE_270K,
+	CABLE_330K,
+	CABLE_620K,
+	CABLE_910K,
+	CABLE_NONE
+} acc_cable_type;
+
+struct chg_cable_info {
+	acc_cable_type cable_type;
+	unsigned ta_ma;
+	unsigned usb_ma;
 };
 
+int lge_pm_get_cable_info(struct chg_cable_info *);
+void lge_pm_read_cable_info(void);
+acc_cable_type lge_pm_get_cable_type(void);
+unsigned lge_pm_get_ta_current(void);
+unsigned lge_pm_get_usb_current(void);
+#endif
+
+#ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
+bool is_lge_battery(void);
+enum {
+	BATT_ID_UNKNOWN,
+	BATT_ID_DS2704_N = 17,
+	BATT_ID_DS2704_L = 32,
+	BATT_ID_ISL6296_N = 73,
+	BATT_ID_ISL6296_L = 94,
+	BATT_ID_DS2704_C = 48,
+	BATT_ID_ISL6296_C =105,
+};
+
+#else
+static inline bool is_lge_battery(void)
+{
+	return true;
+}
+#endif
+
+>>>>>>> 29e1de9... geehrc: switch to LGE display calibration
 struct kcal_platform_data {
 	int (*set_values) (int r, int g, int b);
 	int (*get_values) (int *r, int *g, int *b);
 	int (*refresh_display) (void);
 };
-#endif
 
 int __init lge_get_uart_mode(void);
 

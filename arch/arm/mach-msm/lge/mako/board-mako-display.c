@@ -38,6 +38,15 @@
 #include "devices.h"
 #include "board-mako.h"
 
+#ifdef CONFIG_LGE_KCAL
+#ifdef CONFIG_LGE_QC_LCDC_LUT
+extern int set_qlut_kcal_values(int kcal_r, int kcal_g, int kcal_b);
+extern int refresh_qlut_display(void);
+#else
+#error only kcal by Qucalcomm LUT is supported now!!!
+#endif
+#endif
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 /* prim = 1366 x 768 x 3(bpp) x 3(pages) */
 #if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
@@ -102,10 +111,6 @@ static int msm_fb_detect_panel(const char *name)
 	return 0;
 }
 
-#ifdef CONFIG_LCD_KCAL
-struct kcal_data kcal_value;
-#endif
-
 #ifdef CONFIG_UPDATE_LCDC_LUT
 extern unsigned int lcd_color_preset_lut[];
 int update_preset_lcdc_lut(void)
@@ -137,7 +142,6 @@ int update_preset_lcdc_lut(void)
 
 static struct msm_fb_platform_data msm_fb_pdata = {
 	.detect_client = msm_fb_detect_panel,
-	.update_lcdc_lut = update_preset_lcdc_lut,
 };
 
 static struct platform_device msm_fb_device = {
@@ -274,32 +278,15 @@ void __init apq8064_mdp_writeback(struct memtype_reserve* reserve_table)
 #endif
 }
 
-#ifdef CONFIG_LCD_KCAL
-int kcal_set_values(int kcal_r, int kcal_g, int kcal_b)
-{
-	kcal_value.red = kcal_r;
-	kcal_value.green = kcal_g;
-	kcal_value.blue = kcal_b;
-	return 0;
-}
-
-static int kcal_get_values(int *kcal_r, int *kcal_g, int *kcal_b)
-{
-	*kcal_r = kcal_value.red;
-	*kcal_g = kcal_value.green;
-	*kcal_b = kcal_value.blue;
-	return 0;
-}
-
-static int kcal_refresh_values(void)
-{
-	return update_preset_lcdc_lut();
-}
+#ifdef CONFIG_LGE_KCAL
+extern int set_kcal_values(int kcal_r, int kcal_g, int kcal_b);
+extern int refresh_kcal_display(void);
+extern int get_kcal_values(int *kcal_r, int *kcal_g, int *kcal_b);
 
 static struct kcal_platform_data kcal_pdata = {
-	.set_values = kcal_set_values,
-	.get_values = kcal_get_values,
-	.refresh_display = kcal_refresh_values
+	.set_values = set_kcal_values,
+	.get_values = get_kcal_values,
+	.refresh_display = refresh_kcal_display
 };
 
 static struct platform_device kcal_platrom_device = {
@@ -758,21 +745,22 @@ static char panel_setting_2 [3] = {0xB3, 0x0A, 0x9F};
 static char display_mode1 [6] = {0xB5, 0x50, 0x20, 0x40, 0x00, 0x20};
 static char display_mode2 [8] = {0xB6, 0x00, 0x14, 0x0F, 0x16, 0x13, 0x05, 0x05};
 
-static char p_gamma_r_setting[10] = {0xD0, 0x40, 0x44, 0x76, 0x01, 0x00, 0x00, 0x30, 0x20, 0x01};
-static char n_gamma_r_setting[10] = {0xD1, 0x40, 0x44, 0x76, 0x01, 0x00, 0x00, 0x30, 0x20, 0x01};
-static char p_gamma_g_setting[10] = {0xD2, 0x40, 0x44, 0x76, 0x01, 0x00, 0x00, 0x30, 0x20, 0x01};
-static char n_gamma_g_setting[10] = {0xD3, 0x40, 0x44, 0x76, 0x01, 0x00, 0x00, 0x30, 0x20, 0x01};
-static char p_gamma_b_setting[10] = {0xD4, 0x20, 0x23, 0x74, 0x00, 0x1F, 0x10, 0x50, 0x33, 0x03};
-static char n_gamma_b_setting[10] = {0xD5, 0x20, 0x23, 0x74, 0x00, 0x1F, 0x10, 0x50, 0x33, 0x03};
+//Optimus G calibration
+static char p_gamma_r_setting[10] = {0xD0, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char n_gamma_r_setting[10] = {0xD1, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char p_gamma_g_setting[10] = {0xD2, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char n_gamma_g_setting[10] = {0xD3, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char p_gamma_b_setting[10] = {0xD4, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char n_gamma_b_setting[10] = {0xD5, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
 
-static char ief_on_set0[2] = {0xE0, 0x00};
-static char ief_on_set4[4] = {0xE4, 0x00, 0x00, 0x00};
-static char ief_on_set5[4] = {0xE5, 0x00, 0x00, 0x00};
-static char ief_on_set6[4] = {0xE6, 0x00, 0x00, 0x00};
+static char ief_on_set0[2] = {0xE0, 0x07};
+static char ief_on_set4[4] = {0xE4, 0x02, 0x82, 0x82};
+static char ief_on_set5[4] = {0xE5, 0x01, 0x82, 0x80};
+static char ief_on_set6[4] = {0xE6, 0x04, 0x00, 0x00};
 
 static char ief_set1[5] = {0xE1, 0x00, 0x00, 0x01, 0x01};
-static char ief_set2[3] = {0xE2, 0x01, 0x00};
-static char ief_set3[6] = {0xE3, 0x00, 0x00, 0x42, 0x35, 0x00};
+static char ief_set2[3] = {0xE2, 0x01, 0x0F};
+static char ief_set3[6] = {0xE3, 0x00, 0x00, 0x31, 0x35, 0x00};
 static char ief_set7[9] = {0xE7, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
 static char ief_set8[9] = {0xE8, 0x3D, 0x3D, 0x3D, 0x3D, 0x3D, 0x3D, 0x3D, 0x3D};
 static char ief_set9[9] = {0xE9, 0x3B, 0x3B, 0x3B, 0x3B, 0x3B, 0x3B, 0x3B, 0x3B};
@@ -782,7 +770,7 @@ static char ief_setC[9] = {0xEC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 static char osc_setting[4] =     {0xC0, 0x00, 0x0A, 0x10};
 static char power_setting3[13] = {0xC3, 0x00, 0x88, 0x03, 0x20, 0x01, 0x57, 0x4F, 0x33,0x02,0x38,0x38,0x00};
-static char power_setting4[6] =  {0xC4, 0x31, 0x24, 0x11, 0x11, 0x3D};
+static char power_setting4[6] =  {0xC4, 0x22, 0x24, 0x11, 0x11, 0x3D};
 static char power_setting5[4] =  {0xC5, 0x3B, 0x3B, 0x03};
 
 #ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
@@ -827,7 +815,7 @@ static struct dsi_cmd_desc lgit_power_on_set_1[] = {
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_g_setting), n_gamma_g_setting},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(p_gamma_b_setting), p_gamma_b_setting},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_b_setting), n_gamma_b_setting},
-	
+
 	// IEF set
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_on_set0), ief_on_set0},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set1), ief_set1},
@@ -917,7 +905,7 @@ static struct platform_device *mako_panel_devices[] __initdata = {
 #if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
 	&mipi_dsi_lgit_panel_device,
 #endif
-#ifdef CONFIG_LCD_KCAL
+#ifdef CONFIG_LGE_KCAL
 	&kcal_platrom_device,
 #endif
 };

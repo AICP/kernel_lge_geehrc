@@ -53,6 +53,12 @@
 #include "mdp.h"
 #include "mdp4.h"
 
+#if defined (CONFIG_LGE_QC_LCDC_LUT)
+#include "lge_qlut.h"
+int g_qlut_change_by_kernel;
+EXPORT_SYMBOL(g_qlut_change_by_kernel);
+#endif
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MSM_FB_NUM	3
 #endif
@@ -1598,7 +1604,6 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	MSM_FB_INFO
 	    ("FrameBuffer[%d] %dx%d size=%d bytes is registered successfully!\n",
 	     mfd->index, fbi->var.xres, fbi->var.yres, fbi->fix.smem_len);
-
 #ifdef CONFIG_UPDATE_LCDC_LUT
 	if (msm_fb_pdata->update_lcdc_lut)
 		msm_fb_pdata->update_lcdc_lut();
@@ -4448,6 +4453,33 @@ msm_fb_read(struct fb_info *info, char __user *buf, size_t count, loff_t *ppos)
 
 	return (err) ? err : cnt;
 }
+#endif
+
+#if defined(CONFIG_LGE_QC_LCDC_LUT)
+int lge_set_qlut(void)
+{
+	struct fb_cmap cmap;
+	int ret = 0;
+
+	cmap.start	= 0;
+	cmap.len	= 256;
+	cmap.transp	= 0;
+	cmap.red	= NULL;
+	cmap.green	= NULL;
+	cmap.blue	= NULL;
+
+	mutex_lock(&msm_fb_ioctl_lut_sem);
+	g_qlut_change_by_kernel = 1;
+	ret = msm_fb_set_lut(&cmap, fbi_list[0]);
+	g_qlut_change_by_kernel = 0;
+	mutex_unlock(&msm_fb_ioctl_lut_sem);
+
+	if (ret)
+		printk(KERN_ERR "lge_set_initial_lut faild : %d\n", ret);
+
+	return ret;
+}
+EXPORT_SYMBOL(lge_set_qlut);
 #endif
 
 /* Called by v4l2 driver to enable/disable overlay pipe */

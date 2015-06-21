@@ -14,7 +14,7 @@
 #include <linux/module.h>
 
 /* pixel order : RBG */
-const unsigned int lcd_color_preset_lut[256] = {
+const unsigned int p_lg_qc_lcdc_lut[256] = {
 	/* default linear qlut */
 	0x00000000, 0x00010101, 0x00020202, 0x00030303,
 	0x00040404, 0x00050505, 0x00060606, 0x00070707,
@@ -81,4 +81,4 @@ const unsigned int lcd_color_preset_lut[256] = {
 	0x00f8f8f8, 0x00f9f9f9, 0x00fafafa, 0x00fbfbfb,
 	0x00fcfcfc, 0x00fdfdfd, 0x00fefefe, 0x00ffffff
 };
-EXPORT_SYMBOL(lcd_color_preset_lut);
+EXPORT_SYMBOL(p_lg_qc_lcdc_lut);
