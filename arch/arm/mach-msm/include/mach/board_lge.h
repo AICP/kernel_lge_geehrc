@@ -102,7 +102,6 @@ static inline bool is_lge_battery(void)
 }
 #endif
 
->>>>>>> 29e1de9... geehrc: switch to LGE display calibration
 struct kcal_platform_data {
 	int (*set_values) (int r, int g, int b);
 	int (*get_values) (int *r, int *g, int *b);
