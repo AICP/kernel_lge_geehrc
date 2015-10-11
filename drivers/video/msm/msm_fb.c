@@ -1608,11 +1608,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	if (msm_fb_pdata->update_lcdc_lut)
 		msm_fb_pdata->update_lcdc_lut();
 #endif
-#ifdef CONFIG_FB_MSM_LOGO
-	/* Flip buffer */
-	if (!load_565rle_image(INIT_IMAGE_FILE, bf_supported))
-		;
-#endif
+
 	ret = 0;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
