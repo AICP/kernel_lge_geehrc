@@ -92,6 +92,11 @@ extern struct device_node *of_chosen;
 extern struct device_node *of_aliases;
 extern rwlock_t devtree_lock;
 
+static inline struct device_node *of_find_node_by_path(const char *path)
+{
+    return NULL;
+}
+
 static inline bool of_have_populated_dt(void)
 {
 	return allnodes != NULL;
@@ -261,11 +266,6 @@ extern void of_detach_node(struct device_node *);
 
 #define of_match_ptr(_ptr)	(_ptr)
 #else /* CONFIG_OF */
-
-static inline struct device_node *of_find_node_by_path(const char *path)
-{
-    return NULL;
-}
 
 static inline bool of_have_populated_dt(void)
 {

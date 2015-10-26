@@ -24,7 +24,6 @@
 #include <linux/err.h>
 #include <linux/of.h>
 #include <linux/sched.h>
-#include <linux/cpufreq_stats.h>
 #include <asm/cputime.h>
 
 static spinlock_t cpufreq_stats_lock;
@@ -480,17 +479,6 @@ static void cpufreq_powerstats_create(unsigned int cpu,
 			kfree(powerstats);
 			powerstats = NULL;
 		}
-	}
-#else
-	/* shut up GCC */
-	(void)cpu_node;
-	(void)device_path;
-
-        ret = cpufreq_stats_platform_cpu_power_read_tables(cpu, powerstats->curr, count);
-	if (ret) {
-		kfree(powerstats->curr);
-		kfree(powerstats);
-		powerstats = NULL;
 	}
 #endif
 	per_cpu(cpufreq_power_stats, cpu) = powerstats;
