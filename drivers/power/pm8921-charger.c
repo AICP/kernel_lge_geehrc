@@ -1750,7 +1750,7 @@ static void __pm8921_charger_vbus_draw(unsigned int mA)
 			}
 		}
 		rc = pm_chg_iusbmax_set(the_chip, i);
-		pr_info("charge curent index => %d\n", i);
+//		pr_info("charge curent index => %d\n", i);
 #else
 		rc = pm_chg_iusbmax_set(the_chip, i);
 #endif
@@ -2584,8 +2584,8 @@ static void vin_collapse_check_worker(struct work_struct *work)
 		decrease_usb_ma_value(&usb_target_ma);
 		/* reset here, increase in unplug_check_worker */
 		__pm8921_charger_vbus_draw(USB_WALL_THRESHOLD_MA);
-		pr_debug("usb_now=%d, usb_target = %d\n",
-				USB_WALL_THRESHOLD_MA, usb_target_ma);
+//		pr_debug("usb_now=%d, usb_target = %d\n",
+//				USB_WALL_THRESHOLD_MA, usb_target_ma);
 	} else {
 		handle_usb_insertion_removal(chip);
 	}
@@ -2806,8 +2806,8 @@ static void unplug_check_worker(struct work_struct *work)
 			if (usb_ma > 500) {
 				usb_ma = 500;
 				__pm8921_charger_vbus_draw(usb_ma);
-				pr_info("usb_now=%d, usb_target = %d\n",
-					usb_ma, 500);
+//				pr_info("usb_now=%d, usb_target = %d\n",
+//					usb_ma, 500);
 				goto check_again_later;
 			} else if (usb_ma == 500) {
 				pr_info("Stopping Unplug Check Worker"
@@ -2852,8 +2852,8 @@ static void unplug_check_worker(struct work_struct *work)
 			usb_target_ma = usb_ma;
 			/* end AICL here */
 			__pm8921_charger_vbus_draw(usb_ma);
-			pr_info("VIN: usb_now=%d, usb_target = %d\n",
-				usb_ma, usb_target_ma);
+//			pr_info("VIN: usb_now=%d, usb_target = %d\n",
+//				usb_ma, usb_target_ma);
 		}
 	}
 
@@ -2908,8 +2908,8 @@ static void unplug_check_worker(struct work_struct *work)
 		if (usb_ma < usb_target_ma) {
 			increase_usb_ma_value(&usb_ma);
 			__pm8921_charger_vbus_draw(usb_ma);
-			pr_info("usb_now=%d, usb_target = %d\n",
-					usb_ma, usb_target_ma);
+//			pr_info("usb_now=%d, usb_target = %d\n",
+//					usb_ma, usb_target_ma);
 		} else {
 			usb_target_ma = usb_ma;
 		}
