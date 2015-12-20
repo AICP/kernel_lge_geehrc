@@ -11,7 +11,7 @@
 # set toolchain
 ##############################################################################
 export ARCH=arm
-export CROSS_COMPILE=~/android/eos/prebuilts/gcc/linux-x86/arm/arm-eabi-4.9/bin/arm-eabi-
+export CROSS_COMPILE=~/android/nitrogen/prebuilts/gcc/linux-x86/arm/arm-eabi-4.9/bin/arm-eabi-
 export CCACHE_DIR=~/.ccache/kernel_e975
 export KBUILD_BUILD_USER=xyyx
 export KBUILD_BUILD_HOST=irk
