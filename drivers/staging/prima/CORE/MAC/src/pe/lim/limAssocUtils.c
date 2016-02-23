@@ -1641,6 +1641,8 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
     if ( (selfStaDot11Mode == WNI_CFG_DOT11_MODE_ALL) ||
          (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11A) ||
          (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11AC) ||
+         (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11N) ||
+         (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11G) ||
          (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11B) )
     {
         val = WNI_CFG_SUPPORTED_RATES_11B_LEN;
@@ -3375,8 +3377,9 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
 
     if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona)
     {
-        pAddBssParams->staContext.p2pCapableSta = 1;
+        pAddBssParams->staContext.p2pCapableSta = 1;       
     }
+
     pAddBssParams->bSpectrumMgtEnabled = psessionEntry->spectrumMgtEnabled;
 
 #if defined WLAN_FEATURE_VOWIFI_11R
@@ -3657,8 +3660,9 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
 
     pAddBssParams->staContext.sessionId = psessionEntry->peSessionId;
     pAddBssParams->sessionId = psessionEntry->peSessionId;
-
+    
     pAddBssParams->halPersona = (tANI_U8)psessionEntry->pePersona; //update persona
+
     pAddBssParams->bSpectrumMgtEnabled = psessionEntry->spectrumMgtEnabled;
 
 #if defined WLAN_FEATURE_VOWIFI_11R
@@ -3669,7 +3673,7 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
 
     //pMac->lim.gLimMlmState = eLIM_MLM_WT_ADD_BSS_RSP_PREASSOC_STATE;
     psessionEntry->limMlmState = eLIM_MLM_WT_ADD_BSS_RSP_PREASSOC_STATE;
-
+    
     MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
 
     //we need to defer the message until we get the response back from HAL.
@@ -3740,22 +3744,20 @@ limPrepareAndSendDelStaCnf(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tSirResult
             sizeof(tSirMacAddr));
 
     mlmStaContext = pStaDs->mlmStaContext;
-    if(eSIR_SME_SUCCESS == statusCode)
+    if ((psessionEntry->limSystemRole == eLIM_AP_ROLE) ||
+        (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE))
     {
-        if ((psessionEntry->limSystemRole == eLIM_AP_ROLE) ||
-            (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE))
-        {
-            limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
-        }
-
-        limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId,psessionEntry);
+        limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
     }
-    if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE)||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
+    limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId, psessionEntry);
+
+    if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE)||
+         (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
     {
         psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
-        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
+        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE,
+                        psessionEntry->peSessionId, psessionEntry->limMlmState));
     }
-
     limSendDelStaCnf(pMac, staDsAddr, staDsAssocId, mlmStaContext, statusCode,psessionEntry);
 }
 

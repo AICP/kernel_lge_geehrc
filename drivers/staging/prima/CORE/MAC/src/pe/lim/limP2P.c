@@ -79,9 +79,9 @@
 #define   ADDR2_OFFSET           10
 #define   ACTION_OFFSET          24
 
-/* A DFS channel can be ACTIVE for max 30000 msec, from the last
+/* A DFS channel can be ACTIVE for max 9000 msec, from the last
    received Beacon/Prpbe Resp. */
-#define   MAX_TIME_TO_BE_ACTIVE_CHANNEL 30000
+#define   MAX_TIME_TO_BE_ACTIVE_CHANNEL 9000
 
 
 
@@ -710,6 +710,11 @@ void limSendSmeMgmtFrameInd(
             {
                 limLog( pMac, LOGE, FL("Unable to active the gLimRemainOnChannelTimer"));
             } 
+    }
+    else
+    {
+       if(frameType == SIR_MAC_MGMT_ACTION)
+            limLog( pMac, LOGE, FL("Rx: NO REMAIN ON CHANNEL and recd action frame "));
     }
 
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);

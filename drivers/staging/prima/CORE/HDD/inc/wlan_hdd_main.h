@@ -115,6 +115,9 @@
 #define WLAN_WAIT_TIME_DISCONNECT  500
 #define WLAN_WAIT_TIME_STATS       800
 #define WLAN_WAIT_TIME_POWER       800
+#define WLAN_WAIT_TIME_COUNTRY     1000
+#define WLAN_WAIT_TIME_CHANNEL_UPDATE   600
+
 /* Amount of time to wait for sme close session callback.
    This value should be larger than the timeout used by WDI to wait for
    a response from WCNSS */
@@ -145,6 +148,7 @@
 #define MAC_ADDR_ARRAY(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 /** Mac Address string **/
 #define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_ADDRESS_STR_LEN 18 /* Including null terminator */
 #define MAX_GENIE_LEN 255
 
 #define WLAN_CHIP_VERSION   "WCNSS"
@@ -189,6 +193,15 @@
 #define GTK_OFFLOAD_ENABLE  0
 #define GTK_OFFLOAD_DISABLE 1
 #endif
+
+#ifdef FEATURE_WLAN_SCAN_PNO
+#define HDD_PNO_SCAN_TIMERS_SET_ONE      1
+/* value should not be greater than PNO_MAX_SCAN_TIMERS */
+#define HDD_PNO_SCAN_TIMERS_SET_MULTIPLE 6
+#endif
+
+#define HDD_MAC_ADDR_LEN    6
+typedef v_U8_t tWlanHddMacAddr[HDD_MAC_ADDR_LEN];
 
 #define HDD_MAC_ADDR_LEN    6
 typedef v_U8_t tWlanHddMacAddr[HDD_MAC_ADDR_LEN];
@@ -579,6 +592,9 @@ typedef struct {
    /**Track whether OS TX queue has been disabled.*/
    v_BOOL_t txSuspended[NUM_TX_QUEUES];
 
+   /**Track whether 3/4th of resources are used on softAP/P2P GO side. */
+   v_BOOL_t vosLowResource;
+
    /** Track QoS status of station */
    v_BOOL_t isQosEnabled;
 
@@ -641,6 +657,10 @@ typedef struct hdd_scaninfo_s
    /* The scan pending  */
    v_U32_t mScanPending;
 
+  /* Counter for mScanPending so that the scan pending
+     error log is not printed for more than 5 times    */
+   v_U32_t mScanPendingCounter;
+
    /* Client Wait Scan Result */
    v_U32_t waitScanResult;
 
@@ -682,13 +702,6 @@ struct hdd_adapter_s
 
    /** Handle to the network device */
    struct net_device *dev;
-
-#ifdef WLAN_NS_OFFLOAD
-   /** IPv6 notifier callback for handling NS offload on change in IP */
-   struct notifier_block ipv6_notifier;
-   bool ipv6_notifier_registered;
-   struct work_struct  ipv6NotifierWorkQueue;
-#endif
     
    //TODO Move this to sta Ctx
    struct wireless_dev wdev ;
@@ -767,6 +780,9 @@ struct hdd_adapter_s
    hdd_list_t wmm_tx_queue[NUM_TX_QUEUES];
    /**Track whether VOS is in a low resource state*/
    v_BOOL_t isVosOutOfResource;
+
+   /**Track whether 3/4th of resources are used on STA/p2p client side */
+   v_BOOL_t isVosLowResource;
   
    /**Track whether OS TX queue has been disabled.*/
    v_BOOL_t isTxSuspended[NUM_TX_QUEUES];
@@ -780,7 +796,7 @@ struct hdd_adapter_s
  */
     /** Multiple station supports */
    /** Per-station structure */
-   spinlock_t staInfo_lock; //To protect access to station Info  
+   spinlock_t staInfo_lock; //To protect access to station Info
    hdd_station_info_t aStaInfo[WLAN_MAX_STA_COUNT];
    //v_U8_t uNumActiveStation;
 
@@ -811,6 +827,10 @@ struct hdd_adapter_s
    //Magic cookie for adapter sanity verification
    v_U32_t magic;
    v_BOOL_t higherDtimTransition;
+   /* Flag to ensure PSB is configured through framework */
+   v_U8_t psbChanged;
+   /* UAPSD psb value configured through framework */
+   v_U8_t configuredPsb;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
@@ -906,6 +926,11 @@ struct hdd_context_s
    /* Completion  variable to wlan_hdd_get_crda_regd_entry  */
    struct completion driver_crda_req;
 
+   /* Completion variable to indicate updation of channel */
+   struct completion wiphy_channel_update_event;
+
+   v_BOOL_t nEnableStrictRegulatoryForFCC;
+
    v_BOOL_t isWlanSuspended;
 
    v_BOOL_t isTxThreadSuspended;
@@ -994,6 +1019,8 @@ struct hdd_context_s
     /* TDLS peer connected count */
     tANI_U16 connected_peer_count;
     tdls_scan_context_t tdls_scan_ctxt;
+   /* Lock to avoid race condition during TDLS operations*/
+   struct mutex tdls_lock;
 #endif
 
     hdd_traffic_monitor_t traffic_monitor;
@@ -1018,14 +1045,12 @@ struct hdd_context_s
 
     // Indicates about pending sched_scan results
     v_BOOL_t isSchedScanUpdatePending;
-
     /*
     * TX_rx_pkt_count_timer
     */
     vos_timer_t    tx_rx_trafficTmr;
     v_U8_t         drvr_miracast;
     v_U8_t         issplitscan_enabled;
-
 };
 
 
@@ -1103,11 +1128,10 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx);
 void hdd_set_pwrparams(hdd_context_t *pHddCtx);
 void hdd_reset_pwrparams(hdd_context_t *pHddCtx);
 int wlan_hdd_validate_context(hdd_context_t *pHddCtx);
+v_BOOL_t hdd_is_valid_mac_address(const tANI_U8* pMacAddr);
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType, tANI_U8 sessionId);
 #endif
 VOS_STATUS hdd_issta_p2p_clientconnected(hdd_context_t *pHddCtx);
-#ifdef WLAN_NS_OFFLOAD
-void hdd_ipv6_notifier_work_queue(struct work_struct *work);
-#endif
+int hdd_wmmps_helper(hdd_adapter_t *pAdapter, tANI_U8 *ptr);
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

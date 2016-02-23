@@ -87,8 +87,8 @@
 #ifdef FEATURE_WLAN_CCX
 /* These are the min/max tx power (non virtual rates) range
    supported by prima hardware */
-#define MIN_TX_PWR_CAP    12
-#define MAX_TX_PWR_CAP    19
+#define MIN_TX_PWR_CAP    8
+#define MAX_TX_PWR_CAP    22
 
 #endif
 
@@ -1065,7 +1065,6 @@ void limGetRandomBssid(tpAniSirGlobal pMac, tANI_U8 *data)
      palCopyMemory(pMac->hHdd, data, (tANI_U8*)random, sizeof(tSirMacAddr));
 }
 
-
 /**
  * __limProcessSmeScanReq()
  *
@@ -1555,7 +1554,8 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                 // Log the event and send success
                 PELOGW(limLog(pMac, LOGW, FL("Received SME_JOIN_REQ for currently joined BSS"));)
                 /// Send Join success response to host
-                retCode = eSIR_SME_SUCCESS;
+                retCode = eSIR_SME_ALREADY_JOINED_A_BSS;
+                psessionEntry = NULL;
                 goto end;
             }
             else
@@ -1599,6 +1599,8 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->bssType = pSmeJoinReq->bsstype;
 
         psessionEntry->statypeForBss = STA_ENTRY_PEER;
+        psessionEntry->limWmeEnabled = pSmeJoinReq->isWMEenabled;
+        psessionEntry->limQosEnabled = pSmeJoinReq->isQosEnabled;
 
         /* Copy the dot 11 mode in to the session table */
 
@@ -3535,7 +3537,6 @@ __limProcessSmeAssocCnfNew(tpAniSirGlobal pMac, tANI_U32 msgType, tANI_U32 *pMsg
                              true, pStaDs->mlmStaContext.authType,
                              pStaDs->assocId, true,
                              eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
-        return;
     }
 
 end:
@@ -3908,6 +3909,7 @@ __limProcessSmeStatsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         limLog(pMac, LOGE, FL("session does not exist for given bssId"));
         palFreeMemory( pMac, pMsgBuf );
+        pMsgBuf = NULL;
         return;
     }
 
@@ -3933,6 +3935,7 @@ __limProcessSmeStatsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         default: //Unknown request.
             PELOGE(limLog(pMac, LOGE, "Unknown Statistics request");)
             palFreeMemory( pMac, pMsgBuf );
+            pMsgBuf = NULL;
             return;
     }
 
@@ -3960,6 +3963,7 @@ __limProcessSmeStatsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
         limLog(pMac, LOGP, "Unable to forward request");
         palFreeMemory( pMac, pMsgBuf );
+        pMsgBuf = NULL;
         return;
     }
 
@@ -4008,6 +4012,7 @@ __limProcessSmeGetStatisticsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
         palFreeMemory( pMac, pMsgBuf );
+        pMsgBuf = NULL;
         limLog(pMac, LOGP, "Unable to forward request");
         return;
     }
@@ -4055,6 +4060,7 @@ __limProcessSmeGetRoamRssiRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
         palFreeMemory( pMac, pMsgBuf );
+        pMsgBuf = NULL;
         limLog(pMac, LOGP, "Unable to forward request");
         return;
     }
@@ -4435,7 +4441,6 @@ __limProcessSmeAddStaSelfReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
    palCopyMemory( pMac->hHdd, pAddStaSelfParams->selfMacAddr, pSmeReq->selfMacAddr, sizeof(tSirMacAddr) ); 
 
-   pAddStaSelfParams->currDeviceMode = pSmeReq->currDeviceMode;
    msg.type = SIR_HAL_ADD_STA_SELF_REQ;
    msg.reserved = 0;
    msg.bodyptr =  pAddStaSelfParams;

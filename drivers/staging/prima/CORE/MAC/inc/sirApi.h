@@ -1041,7 +1041,8 @@ typedef struct sSirSmeJoinReq
     tANI_U8             txBFIniFeatureEnabled;
     tANI_U8             txBFCsnValue;
 #endif
-
+    tAniBool            isWMEenabled;
+    tAniBool            isQosEnabled;
     tAniTitanCBNeighborInfo cbNeighbors;
     tAniBool            spectrumMgtIndicator;
     tSirMacPowerCapInfo powerCap;
@@ -2114,6 +2115,7 @@ typedef struct sAniChangeCountryCodeReq
     tANI_U16                msgType;    // message type is same as the request type
     tANI_U16                msgLen;     // length of the entire request
     tANI_U8                 countryCode[WNI_CFG_COUNTRY_CODE_LEN];   //3 char country code
+    tAniBool                sendRegHint;  //TRUE if we want to send hint to NL80211
     void                    *changeCCCallback;
     void                    *pDevContext; //device context
     void                    *pVosContext; //voss context
@@ -3306,7 +3308,6 @@ typedef struct sSirSmeAddStaSelfReq
     tANI_U16        mesgType;
     tANI_U16        mesgLen;
     tSirMacAddr     selfMacAddr;
-    tVOS_CON_MODE   currDeviceMode;
 }tSirSmeAddStaSelfReq, *tpSirSmeAddStaSelfReq;
 
 typedef struct sSirSmeDelStaSelfReq
@@ -3600,9 +3601,6 @@ typedef struct
 
   /* Beacon Early Termination Interval */
   tANI_U32 uBETInterval; 
-
-  /* MAX LI for modulated DTIM */
-  tANI_U32 uMaxLIModulatedDTIM;
 
 }tSirSetPowerParamsReq, *tpSirSetPowerParamsReq;
 
